@@ -4,7 +4,6 @@ from collections import defaultdict
 
 def scrapeSchedule(url):
     page = requests.get(url)
-    print("Type = ", type(page.content))
     soup = BeautifulSoup(page.content, 'html.parser')
     panelDiv = soup.find_all(attrs= {
                                      'class': 'ds-p-4'   
@@ -36,7 +35,45 @@ def scrapeSchedule(url):
     for i in range(len(gameDateList)):
         schedule[gameDateList.pop()].append(matchDetailList.pop())
 
-    #for key,value in schedule.items():
-    #    print(key, "--->", value)
-
     return schedule
+
+def getLiveScore(url):
+    page = requests.get(url)
+    print(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    
+    liveScoreCard = " "
+
+    return liveScoreCard
+
+def scrapeScore(url):
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    matches = soup.find_all('li', attrs={'class': 'cb-view-all-ga cb-match-card cb-bg-white'})
+    iplMatches = []
+    iplMatchesSrc = []
+    
+    for match in matches:
+        matchInfo = match.get_text()
+        if "Indian Premier League 2023" in matchInfo:
+            matchClass = match.find('div', attrs={'class': 'cb-font-12'})['class']
+            #print(matchClass)
+            if "cb-text-complete" in matchClass:
+                #iplMatchesSrc.append(match)
+                #iplMatches.append(matchInfo)
+                print("Match Over")
+            elif "cb-text-preview" in matchClass:
+                print("Match yet to begin")
+            elif "cb-text-in-progress" in matchClass:
+                print("Toss Over - Match yet to begin")
+            elif "cb-text-live" in matchClass:
+                print("Live Match Happening")
+                iplMatchesSrc.append(match)
+                iplMatches.append(matchInfo)
+        
+    #print(iplMatches)
+    #After getting all the IPL matches go to the live match link
+    numIplMatches = len(iplMatches)
+    for i in range(numIplMatches):
+        linkToMatch = url + iplMatchesSrc[i].find('a')['href']     
+        getLiveScore(linkToMatch)
