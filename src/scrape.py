@@ -41,8 +41,8 @@ def getLiveScore(url):
     page = requests.get(url)
     print(url)
     soup = BeautifulSoup(page.content, 'html.parser')
-    
-    liveScoreCard = " "
+    liveScoreCard = soup.find_all('div', attrs={'class': 'cb-col-67 cb-col'})
+    print(liveScoreCard)
 
     return liveScoreCard
 
@@ -70,7 +70,7 @@ def scrapeScore(url):
                 print("Live Match Happening")
                 iplMatchesSrc.append(match)
                 iplMatches.append(matchInfo)
-        
+    # scorecard div-class cb-col-67 cb-col   
     #print(iplMatches)
     #After getting all the IPL matches go to the live match link
     numIplMatches = len(iplMatches)
