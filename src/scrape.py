@@ -59,8 +59,8 @@ def scrapeScore(url):
             matchClass = match.find('div', attrs={'class': 'cb-font-12'})['class']
             #print(matchClass)
             if "cb-text-complete" in matchClass:
-                #iplMatchesSrc.append(match)
-                #iplMatches.append(matchInfo)
+                iplMatchesSrc.append(match)
+                iplMatches.append(matchInfo)
                 print("Match Over")
             elif "cb-text-preview" in matchClass:
                 print("Match yet to begin")
@@ -77,3 +77,5 @@ def scrapeScore(url):
     for i in range(numIplMatches):
         linkToMatch = url + iplMatchesSrc[i].find('a')['href']     
         getLiveScore(linkToMatch)
+
+    return iplMatches
