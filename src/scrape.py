@@ -2,6 +2,22 @@ import requests
 from bs4 import BeautifulSoup
 from collections import defaultdict
 
+# Series
+ipl_2023 = "Indian Premier League 2023"
+# Match State strs
+matchState = {
+                "Over": "cb-text-complete",
+                "In Progress": "cb-text-in-progress",
+                "Yet to Start": "cb-text-preview",
+                "Live": "" # Check this when match is live
+             }
+
+# Header Strs
+batterStr = "Batter"
+bowlerStr = "Bowler"
+erStr = "ECO"
+srStr = "SR"
+
 def scrapeSchedule(url):
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
@@ -39,14 +55,64 @@ def scrapeSchedule(url):
 
 def getLiveScore(url):
     page = requests.get(url)
-    print(url)
     soup = BeautifulSoup(page.content, 'html.parser')
-    liveScoreCard = soup.find_all('div', attrs={'class': 'cb-col-67 cb-col'})
-    print(liveScoreCard)
+    playersDiv = soup.find_all('div', attrs={'class': 'cb-min-inf cb-col-100'})
 
-    return liveScoreCard
+    # Get Bowler info
+    bowlerInfo = ""
+    batterInfo = ""
+    populatingBatterHeader = False
+    populatingBowlerHeader = False
+    populatedBatter = False
+    populatedBowler = False
+    populatedBatterHeader = False
+    populatedBowlerHeader = False
+    batterHeaderInfo = ""
+    bowlerHeaderInfo = ""
+    for playersInfo in playersDiv:
+        for players in playersInfo:
+            for player in players:
+                parsedText = player.get_text()
+                if (parsedText == batterStr):
+                    populatingBatterHeader = True
+                    batterHeaderInfo += parsedText + "                    "
+                elif (parsedText == srStr):
+                    batterHeaderInfo += parsedText
+                    populatedBatterHeader = True
+                    populatingBatterHeader = False
+                elif (parsedText == bowlerStr):
+                    populatedBatter = True
+                    populatingBowlerHeader = True
+                    bowlerHeaderInfo += parsedText + "                    "
+                elif (parsedText == erStr):
+                    bowlerHeaderInfo += parsedText
+                    populatedBowlerHeader = True
+                    populatingBowlerHeader = False
+                else:
+                    if (populatingBatterHeader == True):
+                        batterHeaderInfo += parsedText + "      "
+                    elif (populatingBowlerHeader == True):
+                        bowlerHeaderInfo += parsedText + "      "
+                    elif (populatedBatterHeader == True) and (populatedBatter == False):
+                        batterInfo += parsedText + "    "
+                    elif (populatedBowlerHeader == True) and (populatedBowler == False):
+                        bowlerInfo += parsedText + "    "
+            if (len(batterInfo) > 1) and (populatedBatter == False):
+                batterInfo += "\n"
+            if (len(bowlerInfo) > 1):
+                bowlerInfo += "\n"
 
-def scrapeScore(url):
+    scoreBoard = soup.find_all('div', attrs={'class': 'cb-col cb-col-67 cb-scrs-wrp'})
+    teamScore = ""
+    for scores in scoreBoard:
+        for score in scores:
+            teamScore += score.get_text()
+            teamScore += "\n"
+
+    scoreCard = teamScore + batterHeaderInfo + "\n" + batterInfo + "\n" + bowlerHeaderInfo + "\n" + bowlerInfo
+    return scoreCard
+
+def getScore(url):
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
     matches = soup.find_all('li', attrs={'class': 'cb-view-all-ga cb-match-card cb-bg-white'})
@@ -55,27 +121,28 @@ def scrapeScore(url):
     
     for match in matches:
         matchInfo = match.get_text()
-        if "Indian Premier League 2023" in matchInfo:
+        if ipl_2023 in matchInfo:
             matchClass = match.find('div', attrs={'class': 'cb-font-12'})['class']
-            #print(matchClass)
-            if "cb-text-complete" in matchClass:
-                iplMatchesSrc.append(match)
-                iplMatches.append(matchInfo)
+            if matchState["Over"] in matchClass:
+                #iplMatchesSrc.append(match)
+                #iplMatches.append(matchInfo)
                 print("Match Over")
-            elif "cb-text-preview" in matchClass:
+            elif matchState["Yet to Start"] in matchClass:
                 print("Match yet to begin")
-            elif "cb-text-in-progress" in matchClass:
+            elif matchState["In Progress"] in matchClass:
                 print("Toss Over - Match yet to begin")
-            elif "cb-text-live" in matchClass:
+            else:
                 print("Live Match Happening")
                 iplMatchesSrc.append(match)
                 iplMatches.append(matchInfo)
-    # scorecard div-class cb-col-67 cb-col   
-    #print(iplMatches)
+ 
     #After getting all the IPL matches go to the live match link
     numIplMatches = len(iplMatches)
+    scoreCard = ""
     for i in range(numIplMatches):
-        linkToMatch = url + iplMatchesSrc[i].find('a')['href']     
-        getLiveScore(linkToMatch)
+        linkToMatch = url + iplMatchesSrc[i].find('a')['href']
+        print(linkToMatch)
+        scoreCard = getLiveScore(linkToMatch)
+        print(scoreCard)
 
-    return iplMatches
+    return scoreCard
