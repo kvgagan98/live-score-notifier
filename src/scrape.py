@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from collections import defaultdict
+import notifyme
 
 # Series
 ipl_2023 = "Indian Premier League 2023"
@@ -19,6 +20,12 @@ erStr = "ECO"
 srStr = "SR"
 
 def scrapeSchedule(url):
+    """
+    Scrapes Game Schedule from cricinfo
+    Params: (IN)  url to cricinfo
+            (OUT) schedule as a dictionary
+    """
+
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
     panelDiv = soup.find_all(attrs= {
@@ -54,6 +61,12 @@ def scrapeSchedule(url):
     return schedule
 
 def getLiveScore(url):
+    """
+    Gets Live Score if a live game is Happening
+    Params: (IN)  url
+            (OUT) live sore card
+    """
+    
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
     playersDiv = soup.find_all('div', attrs={'class': 'cb-min-inf cb-col-100'})
@@ -113,36 +126,70 @@ def getLiveScore(url):
     return scoreCard
 
 def getScore(url):
+    """
+    Checks calls getLiveScore() if the game is Live, if not calls getStartTime()
+    to get next live match info
+    Params: (IN)  url
+            (OUT) live scoreCard
+    """
+    
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
     matches = soup.find_all('li', attrs={'class': 'cb-view-all-ga cb-match-card cb-bg-white'})
     iplMatches = []
     iplMatchesSrc = []
-    
+    nextMatchesSrc = []
+    nextMatches = []
+
     for match in matches:
         matchInfo = match.get_text()
         if ipl_2023 in matchInfo:
             matchClass = match.find('div', attrs={'class': 'cb-font-12'})['class']
             if matchState["Over"] in matchClass:
-                #iplMatchesSrc.append(match)
-                #iplMatches.append(matchInfo)
-                print("Match Over")
+                continue
             elif matchState["Yet to Start"] in matchClass:
-                print("Match yet to begin")
+                nextMatchesSrc.append(match)
+                nextMatches.append(matchInfo)
             elif matchState["In Progress"] in matchClass:
-                print("Toss Over - Match yet to begin")
+                continue
             else:
                 print("Live Match Happening")
                 iplMatchesSrc.append(match)
                 iplMatches.append(matchInfo)
- 
+
     #After getting all the IPL matches go to the live match link
     numIplMatches = len(iplMatches)
+    numUpcomingMatches = len(nextMatches)
     scoreCard = ""
-    for i in range(numIplMatches):
-        linkToMatch = url + iplMatchesSrc[i].find('a')['href']
-        print(linkToMatch)
-        scoreCard = getLiveScore(linkToMatch)
-        print(scoreCard)
+    if (numIplMatches == 0):
+        for i in range(numUpcomingMatches):
+            linkToNextMatch = url + nextMatchesSrc[i].find('a')['href']
+            startTime = getStartTime(linkToNextMatch)
+            print("No Live Matches now. Next Match on", startTime)
+    else:
+        for i in range(numIplMatches):
+            linkToMatch = url + iplMatchesSrc[i].find('a')['href']
+            print(linkToMatch)
+            scoreCard = getLiveScore(linkToMatch)
+            print(scoreCard)
+        notifyme.notifyMe(scoreCard)
 
     return scoreCard
+
+def getStartTime(url):
+    """
+    Get Start Time of the match
+    Params: (IN)  url
+            (OUT) start time
+    """
+
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    startingIn = soup.find_all('span', attrs={'itemprop': 'startDate'})
+    time = ""
+    for startTime in startingIn:
+        time = startTime.get_text()
+    if "LOCAL" in time:
+        time = time.replace('LOCAL', 'IST')
+
+    return time
